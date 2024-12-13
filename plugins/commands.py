@@ -297,120 +297,96 @@ async def start(client:Client, message):
         pre, grp_id, file_id = data.split('_', 2)
     except:
         pre, grp_id, file_id = "", 0, data
-
+        
     user_id = m.from_user.id
-    if not await db.has_premium_access(user_id):
-        grp_id = int(grp_id)
-        user_verified = await db.is_user_verified(user_id)
-        settings = await get_settings(grp_id , pm_mode=pm_mode)
-        is_second_shortener = await db.use_second_shortener(user_id, settings.get('verify_time', TWO_VERIFY_GAP)) 
-        is_third_shortener = await db.use_third_shortener(user_id, settings.get('third_verify_time', THREE_VERIFY_GAP))
-        if settings.get("is_verify", IS_VERIFY) and not user_verified or is_second_shortener or is_third_shortener:
-            verify_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
-            await db.create_verify_id(user_id, verify_id)
-            temp.CHAT[user_id] = grp_id
-            verify = await get_shortlink(f"https://telegram.me/{temp.U_NAME}?start=notcopy_{user_id}_{verify_id}_{file_id}", grp_id, is_second_shortener, is_third_shortener , pm_mode=pm_mode)
-            if is_third_shortener:
-                howtodownload = settings.get('tutorial_3', TUTORIAL_3)
-            else:
-                howtodownload = settings.get('tutorial_2', TUTORIAL_2) if is_second_shortener else settings.get('tutorial', TUTORIAL)
-            buttons = [[
-                InlineKeyboardButton(text="✅ ᴠᴇʀɪғʏ ✅", url=verify),
-                InlineKeyboardButton(text="ʜᴏᴡ ᴛᴏ ᴠᴇʀɪғʏ❓", url=howtodownload)
-                ],[
-                InlineKeyboardButton(text="😁 ʙᴜʏ sᴜʙsᴄʀɪᴘᴛɪᴏɴ - ɴᴏ ɴᴇᴇᴅ ᴛᴏ ᴠᴇʀɪғʏ 😁", callback_data='seeplans'),
-            ]]
-            reply_markup=InlineKeyboardMarkup(buttons)
-            if await db.user_verified(user_id): 
-                msg = script.THIRDT_VERIFICATION_TEXT
-            else:            
-                msg = script.SECOND_VERIFICATION_TEXT if is_second_shortener else script.VERIFICATION_TEXT
-            d = await m.reply_text(
-                text=msg.format(message.from_user.mention, get_status()),
-                protect_content = False,
-                reply_markup=reply_markup,
-                parse_mode=enums.ParseMode.HTML
+    grp_id = int(grp_id)
+    settings = await get_settings(grp_id, pm_mode=pm_mode)
+    if settings.get("is_verify", IS_VERIFY) and not await db.has_premium_access(user_id):
+       user_verified = await db.is_user_verified(user_id)
+       is_second_shortener = await db.use_second_shortener(user_id, settings.get('verify_time', TWO_VERIFY_GAP)) 
+       is_third_shortener = await db.use_third_shortener(user_id, settings.get('third_verify_time', THREE_VERIFY_GAP))
+    
+       if not user_verified or is_second_shortener or is_third_shortener:
+          verify_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
+          await db.create_verify_id(user_id, verify_id)
+          temp.CHAT[user_id] = grp_id
+        
+          if message.command[1].startswith('allfiles'):
+            verify = await get_shortlink(
+                f"https://telegram.me/{temp.U_NAME}?start=sendall_{user_id}_{verify_id}_{file_id}", 
+                grp_id, 
+                is_second_shortener, 
+                is_third_shortener,
+                pm_mode=pm_mode
             )
-            await asyncio.sleep(300) 
-            await d.delete()
-            await m.delete()
-            return
-
-    if data and data.startswith("allfiles"):
-        _, key = data.split("_", 1)
-        files = temp.FILES_ID.get(key)
-        if not files:
-            await message.reply_text("<b>⚠️ ᴀʟʟ ꜰɪʟᴇs ɴᴏᴛ ꜰᴏᴜɴᴅ ⚠️</b>")
-            return
-        files_to_delete = []
-        for file in files:
-            user_id = message.from_user.id 
-            grp_id = temp.CHAT.get(user_id)
-            settings = await get_settings(grp_id, pm_mode=pm_mode)
-            CAPTION = settings['caption']
-            f_caption = CAPTION.format(
-                file_name=formate_file_name(file.file_name),
-                file_size=get_size(file.file_size),
-                file_caption=file.caption
+          else:
+            verify = await get_shortlink(
+                f"https://telegram.me/{temp.U_NAME}?start=notcopy_{user_id}_{verify_id}_{file_id}", 
+                grp_id, 
+                is_second_shortener, 
+                is_third_shortener,
+                pm_mode=pm_mode
             )
-            btn = [[
-                InlineKeyboardButton("✛ ᴡᴀᴛᴄʜ & ᴅᴏᴡɴʟᴏᴀᴅ ✛", callback_data=f'stream#{file.file_id}')
-            ]]
-            toDel = await client.send_cached_media(
-                chat_id=message.from_user.id,
-                file_id=file.file_id,
-                caption=f_caption,
-                reply_markup=InlineKeyboardMarkup(btn)
-            )
-            files_to_delete.append(toDel)
-
-        delCap = "<b>ᴀʟʟ {} ғɪʟᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ {} ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ᴠɪᴏʟᴀᴛɪᴏɴs!</b>".format(len(files_to_delete), f'{FILE_AUTO_DEL_TIMER / 60} ᴍɪɴᴜᴛᴇs' if FILE_AUTO_DEL_TIMER >= 60 else f'{FILE_AUTO_DEL_TIMER} sᴇᴄᴏɴᴅs')
-        afterDelCap = "<b>ᴀʟʟ {} ғɪʟᴇs ᴀʀᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ {} ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ᴠɪᴏʟᴀᴛɪᴏɴs!</b>".format(len(files_to_delete), f'{FILE_AUTO_DEL_TIMER / 60} ᴍɪɴᴜᴛᴇs' if FILE_AUTO_DEL_TIMER >= 60 else f'{FILE_AUTO_DEL_TIMER} sᴇᴄᴏɴᴅs')
-        replyed = await message.reply(
-            delCap
-        )
-        await asyncio.sleep(FILE_AUTO_DEL_TIMER)
-        for file in files_to_delete:
-            try:
-                await file.delete()
-            except:
-                pass
-        return await replyed.edit(
-            afterDelCap,
-        )
-    if not data:
-        return
+        
+          if is_third_shortener:
+            howtodownload = settings.get('tutorial_3', TUTORIAL_3)
+          else:
+            howtodownload = settings.get('tutorial_2', TUTORIAL_2) if is_second_shortener else settings.get('tutorial', TUTORIAL)
+        
+          buttons = [[
+            InlineKeyboardButton(text="✅ ᴠᴇʀɪғʏ ✅", url=verify),
+            InlineKeyboardButton(text="ʜᴏᴡ ᴛᴏ ᴠᴇʀɪғʏ❓", url=howtodownload)
+          ], [
+            InlineKeyboardButton(text="😁 ʙᴜʏ sᴜʙsᴄʀɪᴘᴛɪᴏɴ - ɴᴏ ɴᴇᴇᴅ ᴛᴏ ᴠᴇʀɪғʏ 😁", callback_data='seeplans'),
+          ]]
+        
+          reply_markup = InlineKeyboardMarkup(buttons)
+          msg = script.SECOND_VERIFICATION_TEXT if is_second_shortener else script.VERIFICATION_TEXT
+          d = await m.reply_text(
+            text=msg.format(message.from_user.mention, get_status()),
+            protect_content=True,
+            reply_markup=reply_markup,
+            parse_mode=enums.ParseMode.HTML
+          )
+          await asyncio.sleep(300) 
+          await d.delete()
+          await m.delete()
+          return
 
     files_ = await get_file_details(file_id)           
     if not files_:
-        pre, file_id = ((base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))).decode("ascii")).split("_", 1)
-        return await message.reply('<b>⚠️ ᴀʟʟ ꜰɪʟᴇs ɴᴏᴛ ꜰᴏᴜɴᴅ ⚠️</b>')
+      pre, file_id = ((base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))).decode("ascii")).split("_", 1)
+      return await message.reply('<b>⚠️ ᴀʟʟ ꜰɪʟᴇs ɴᴏᴛ ꜰᴏᴜɴᴅ ⚠️</b>')
+
     files = files_[0]
-    settings = await get_settings(grp_id , pm_mode=pm_mode)
     CAPTION = settings['caption']
     f_caption = CAPTION.format(
-        file_name = formate_file_name(files.file_name),
-        file_size = get_size(files.file_size),
+        file_name=formate_file_name(files.file_name),
+        file_size=get_size(files.file_size),
         file_caption=files.caption
-    )
+     )
     btn = [[
-        InlineKeyboardButton("✛ ᴡᴀᴛᴄʜ & ᴅᴏᴡɴʟᴏᴀᴅ ✛", callback_data=f'stream#{file_id}')
-    ]]
-    toDel=await client.send_cached_media(
-        chat_id=message.from_user.id,
-        file_id=file_id,
-        caption=f_caption,
-        reply_markup=InlineKeyboardMarkup(btn)
-    )
-    delCap = "<b>ʏᴏᴜʀ ғɪʟᴇ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ {} ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ᴠɪᴏʟᴀᴛɪᴏɴs!</b>".format(f'{FILE_AUTO_DEL_TIMER / 60} ᴍɪɴᴜᴛᴇs' if FILE_AUTO_DEL_TIMER >= 60 else f'{FILE_AUTO_DEL_TIMER} sᴇᴄᴏɴᴅs')
-    afterDelCap = "<b>ʏᴏᴜʀ ғɪʟᴇ ɪs ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ {} ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ᴠɪᴏʟᴀᴛɪᴏɴs!</b>".format(f'{FILE_AUTO_DEL_TIMER / 60} ᴍɪɴᴜᴛᴇs' if FILE_AUTO_DEL_TIMER >= 60 else f'{FILE_AUTO_DEL_TIMER} sᴇᴄᴏɴᴅs') 
-    replyed = await message.reply(
-        delCap,
-        reply_to_message_id= toDel.id)
+         InlineKeyboardButton("✛ ᴡᴀᴛᴄʜ & ᴅᴏᴡɴʟᴏᴀᴅ ✛", callback_data=f'stream#{file_id}')
+     ]]
+    toDel = await client.send_cached_media(
+         chat_id=message.from_user.id,
+         file_id=file_id,
+         caption=f_caption,
+         reply_markup=InlineKeyboardMarkup(btn)
+     )
+
+    delCap = "<b>ʏᴏᴜʀ ғɪʟᴇ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ {} ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ᴠɪᴏʟᴀᴛɪᴏɴs!</b>".format(
+      f'{FILE_AUTO_DEL_TIMER / 60} ᴍɪɴᴜᴛᴇs' if FILE_AUTO_DEL_TIMER >= 60 else f'{FILE_AUTO_DEL_TIMER} sᴇᴄᴏɴᴅs'
+     )
+    afterDelCap = "<b>ʏᴏᴜʀ ғɪʟᴇ ɪs ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ {} ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ᴠɪᴏʟᴀᴛɪᴏɴs!</b>".format(
+      f'{FILE_AUTO_DEL_TIMER / 60} ᴍɪɴᴜᴛᴇs' if FILE_AUTO_DEL_TIMER >= 60 else f'{FILE_AUTO_DEL_TIMER} sᴇᴄᴏɴᴅs'
+     )
+
+    replyed = await message.reply(delCap, reply_to_message_id=toDel.id)
     await asyncio.sleep(FILE_AUTO_DEL_TIMER)
     await toDel.delete()
     return await replyed.edit(afterDelCap)
-    
+    #--------+---------------   
 
 @Client.on_message(filters.command('delete'))
 async def delete(bot, message):
