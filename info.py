@@ -15,7 +15,7 @@ def is_enabled(value, default):
 SESSION = environ.get('SESSION', 'Media_search')
 API_ID = int(environ.get('API_ID', '9333070'))
 API_HASH = environ.get('API_HASH', '511eb11eda4af78ec8f9a0a7de9e1241')
-BOT_TOKEN = environ.get('BOT_TOKEN', '7048477254:AAHyqIpGE6eDpr_W50olLfyC5GOrVzj0x_Y')
+BOT_TOKEN = environ.get('BOT_TOKEN', '7048477254:AAFpYkAtIVfO2p-c8kZ1IPvk1z8LaG26C5k')
 #---------------------------------------------------------------
 #---------------------------------------------------------------
 ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '5016109398').split()]
@@ -37,7 +37,7 @@ LOG_VR_CHANNEL = int(environ.get('LOG_VR_CHANNEL', '0'))
 auth_channel = environ.get('AUTH_CHANNEL', '-1002256862645')
 SUPPORT_GROUP = int(environ.get('SUPPORT_GROUP', '0'))
 request_channel = environ.get('REQUEST_CHANNEL', '0') # If anyone sends a request message to your bot, you will get it in this channel.
-MOVIE_UPDATE_CHANNEL = int(environ.get('MOVIE_UPDATE_CHANNEL', '-1002256862645')) # 
+MOVIE_UPDATE_CHANNEL = int(environ.get('MOVIE_UPDATE_CHANNEL', '-1002291646953')) # 
 SUPPORT_CHAT = environ.get('SUPPORT_CHAT', 'https://t.me/learning_bots') #Support group link ( make sure bot is admin )
 #---------------------------------------------------------------
 #---------------------------------------------------------------
